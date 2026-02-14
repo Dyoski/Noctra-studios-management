@@ -5,7 +5,7 @@ import { db } from '../lib/database';
 import { Booking } from '../types';
 import { PACKAGES, PRICING_TIERS } from '../constants';
 import GlassCard from '../components/GlassCard';
-import { ChevronLeft, ChevronRight, User, Phone, Clock, AlertCircle, Calendar as CalendarIcon, CheckCircle2, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, User, Phone, Clock, AlertCircle, Calendar as CalendarIcon, CheckCircle2, Trash2, X } from 'lucide-react';
 
 const Bookings: React.FC = () => {
   const { bookings, payments, deleteBooking, markAsPaid, refreshData } = useBookingData();
@@ -13,6 +13,11 @@ const Bookings: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [timeInput, setTimeInput] = useState(''); 
+  
+  // Stavy pre vlastné modálne okno
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [bookingIdToDelete, setBookingIdToDelete] = useState<string | null>(null);
+
   const [formData, setFormData] = useState({
     client_name: '',
     phone: '',
@@ -132,20 +137,26 @@ const Bookings: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    // 1. Zobrazenie natívneho potvrdzovacieho dialógu
-    const isConfirmed = window.confirm('Naozaj chcete natrvalo odstrániť túto rezerváciu?');
-    
-    if (!isConfirmed) return;
+  // Otvorenie modálneho okna
+  const handleDeleteTrigger = (id: string) => {
+    setBookingIdToDelete(id);
+    setIsModalOpen(true);
+  };
+
+  // Samotné potvrdenie zmazania v modálnom okne
+  const handleConfirmCancel = async () => {
+    if (!bookingIdToDelete) return;
 
     try {
-      // 2. Voláme deleteBooking z kontextu. 
-      // Vďaka optimistickému update v BookingContext zmizne karta OKAMŽITE z UI.
-      await deleteBooking(id);
+      await deleteBooking(bookingIdToDelete);
+      // Okno zatvoríme až po úspešnom (alebo aspoň iniciovanom) zmazaní
+      setIsModalOpen(false);
+      setBookingIdToDelete(null);
     } catch (err) {
       console.error("Chyba pri mazaní:", err);
-      // 3. Ak nastala chyba (napr. problém s databázou), kontext vráti kartu späť a my zobrazíme alert.
       window.alert("Nepodarilo sa odstrániť rezerváciu. Systém obnovil pôvodný stav.");
+      setIsModalOpen(false);
+      setBookingIdToDelete(null);
     }
   };
 
@@ -414,7 +425,7 @@ const Bookings: React.FC = () => {
                     <button 
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDelete(booking.id);
+                        handleDeleteTrigger(booking.id);
                       }}
                       className="flex-1 h-full py-8 aspect-square flex items-center justify-center rounded-[2.5rem] border-2 border-red-600/60 hover:bg-red-600/10 transition-all active:scale-90 group"
                       title="Zrušiť a odstrániť"
@@ -432,6 +443,46 @@ const Bookings: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Vlastné modálne okno na potvrdenie zmazania */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="glass p-10 md:p-14 rounded-[3.5rem] border-2 border-white/10 max-w-md w-full text-center space-y-8 shadow-[0_0_100px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-300 relative">
+            <button 
+              onClick={() => setIsModalOpen(false)}
+              className="absolute top-8 right-8 text-slate-500 hover:text-white transition-colors"
+            >
+              <X size={24} />
+            </button>
+
+            <div className="mx-auto w-24 h-24 bg-red-500/10 rounded-full flex items-center justify-center mb-4">
+              <AlertCircle size={48} className="text-red-500" />
+            </div>
+            
+            <div className="space-y-3">
+              <h3 className="text-3xl font-black text-white tracking-tighter">Zrušiť rezerváciu?</h3>
+              <p className="text-slate-400 font-medium leading-relaxed">
+                Táto akcia je trvalá a rezervácia bude okamžite odstránená z plánu aj štatistík.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-4 pt-4">
+              <button 
+                onClick={handleConfirmCancel}
+                className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-5 rounded-[2rem] transition-all uppercase text-[11px] tracking-[0.3em] active:scale-95 shadow-2xl shadow-red-900/20"
+              >
+                Potvrdiť a odstrániť
+              </button>
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="w-full bg-white/5 hover:bg-white/10 text-white font-black py-5 rounded-[2rem] transition-all uppercase text-[11px] tracking-[0.3em] border border-white/5"
+              >
+                Ponechať
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
