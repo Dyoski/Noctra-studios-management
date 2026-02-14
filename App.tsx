@@ -1,10 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import Dashboard from './pages/Dashboard';
 import Tasks from './pages/Tasks';
 import Bookings from './pages/Bookings';
 import Revenue from './pages/Revenue';
+import Login from './pages/Login';
+import Register from './pages/Register';
 import { BookingProvider } from './context/BookingContext';
 
 enum Page {
@@ -14,24 +16,37 @@ enum Page {
   Revenue = 'revenue'
 }
 
+type AuthMode = 'login' | 'register';
+
 const App: React.FC = () => {
   const [activePage, setActivePage] = useState<Page>(Page.Dashboard);
-  const [isLoggedOut, setIsLoggedOut] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [authMode, setAuthMode] = useState<AuthMode>('login');
 
-  if (isLoggedOut) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <div className="glass p-8 rounded-2xl w-full max-w-md text-center">
-          <h1 className="text-3xl font-extrabold mb-4 tracking-tighter">noctra studios</h1>
-          <p className="text-slate-400 mb-6">Management Session Ended</p>
-          <button 
-            onClick={() => setIsLoggedOut(false)}
-            className="w-full bg-white text-slate-900 font-bold py-3 rounded-xl hover:bg-slate-200 transition-colors"
-          >
-            Re-Login
-          </button>
-        </div>
-      </div>
+  // Kontrola prihlásenia pri štarte (simulácia cez localStorage)
+  useEffect(() => {
+    const loggedIn = localStorage.getItem('noctra_auth');
+    if (loggedIn === 'true') {
+      setIsAuthenticated(true);
+    }
+  }, []);
+
+  const handleLogin = () => {
+    localStorage.setItem('noctra_auth', 'true');
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('noctra_auth');
+    setIsAuthenticated(false);
+    setActivePage(Page.Dashboard);
+  };
+
+  if (!isAuthenticated) {
+    return authMode === 'login' ? (
+      <Login onLogin={handleLogin} onToggleMode={() => setAuthMode('register')} />
+    ) : (
+      <Register onToggleMode={() => setAuthMode('login')} />
     );
   }
 
@@ -51,7 +66,7 @@ const App: React.FC = () => {
         <Navbar 
           activePage={activePage} 
           onNavChange={setActivePage} 
-          onLogout={() => setIsLoggedOut(true)} 
+          onLogout={handleLogout} 
         />
         <main className="max-w-7xl mx-auto px-4 py-8 md:px-8">
           {renderPage()}

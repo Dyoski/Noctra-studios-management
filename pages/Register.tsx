@@ -1,0 +1,211 @@
+
+import React, { useState, useEffect } from 'react';
+import { Mail, Lock, User, Eye, EyeOff, Check, X, ShieldCheck, ArrowRight } from 'lucide-react';
+import GlassCard from '../components/GlassCard';
+
+interface RegisterProps {
+  onToggleMode: () => void;
+}
+
+const Register: React.FC<RegisterProps> = ({ onToggleMode }) => {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: ''
+  });
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [emailValid, setEmailValid] = useState<boolean | null>(null);
+  const [passwordStrength, setPasswordStrength] = useState(0);
+  const [strengthLabel, setStrengthLabel] = useState('Žiadne');
+
+  const validateEmail = (email: string) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+  };
+
+  const checkPasswordStrength = (pass: string) => {
+    let score = 0;
+    if (pass.length >= 8) score++;
+    if (/[A-Z]/.test(pass)) score++;
+    if (/[0-9]/.test(pass)) score++;
+    if (/[^A-Za-z0-9]/.test(pass)) score++;
+    
+    setPasswordStrength(score);
+    
+    switch (score) {
+      case 0: setStrengthLabel('Príliš krátke'); break;
+      case 1: setStrengthLabel('Slabé'); break;
+      case 2: setStrengthLabel('Stredné'); break;
+      case 3: setStrengthLabel('Silné'); break;
+      case 4: setStrengthLabel('Neprekonateľné'); break;
+    }
+  };
+
+  useEffect(() => {
+    if (formData.email) {
+      setEmailValid(validateEmail(formData.email));
+    } else {
+      setEmailValid(null);
+    }
+  }, [formData.email]);
+
+  useEffect(() => {
+    checkPasswordStrength(formData.password);
+  }, [formData.password]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (emailValid && passwordStrength >= 2 && formData.password === formData.confirmPassword) {
+      alert("Účet bol úspešne vytvorený (simulácia). Teraz sa môžete prihlásiť.");
+      onToggleMode();
+    }
+  };
+
+  const getStrengthColor = () => {
+    switch (passwordStrength) {
+      case 1: return 'bg-red-500';
+      case 2: return 'bg-yellow-500';
+      case 3: return 'bg-blue-500';
+      case 4: return 'bg-emerald-500';
+      default: return 'bg-white/10';
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-6 bg-black">
+      <div className="w-full max-w-lg animate-in fade-in zoom-in-95 duration-700">
+        <header className="text-center mb-10 space-y-2">
+          <h1 className="text-6xl font-black tracking-tighter text-white uppercase italic">Noctra</h1>
+          <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.5em]">Prístup do systému</p>
+        </header>
+
+        <GlassCard className="p-10 border-white/10 shadow-[0_0_80px_rgba(255,255,255,0.02)] rounded-[3rem]">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Celé meno</label>
+              <div className="relative group">
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-white transition-colors" size={18} />
+                <input 
+                  type="text"
+                  required
+                  placeholder="napr. Erik Noctra"
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  className="w-full bg-white/5 border-2 border-white/5 rounded-2xl py-4 pl-12 pr-4 text-white focus:outline-none focus:border-white/20 transition-all font-bold placeholder:text-slate-700"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex justify-between items-end px-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Emailová adresa</label>
+                {emailValid !== null && (
+                  <span className={`text-[10px] font-black uppercase tracking-tighter flex items-center gap-1 ${emailValid ? 'text-emerald-500' : 'text-red-500'}`}>
+                    {emailValid ? <><Check size={12} /> Platný</> : <><X size={12} /> Neplatný formát</>}
+                  </span>
+                )}
+              </div>
+              <div className="relative group">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-white transition-colors" size={18} />
+                <input 
+                  type="email"
+                  required
+                  placeholder="meno@noctra.sk"
+                  value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  className={`w-full bg-white/5 border-2 rounded-2xl py-4 pl-12 pr-4 text-white focus:outline-none transition-all font-bold placeholder:text-slate-700 ${
+                    emailValid === false ? 'border-red-500/30' : 'border-white/5 focus:border-white/20'
+                  }`}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Prístupové heslo</label>
+              <div className="relative group">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-white transition-colors" size={18} />
+                <input 
+                  type={showPassword ? "text" : "password"}
+                  required
+                  placeholder="Minimálne 8 znakov"
+                  value={formData.password}
+                  onChange={(e) => setFormData({...formData, password: e.target.value})}
+                  className="w-full bg-white/5 border-2 border-white/5 rounded-2xl py-4 pl-12 pr-12 text-white focus:outline-none focus:border-white/20 transition-all font-bold placeholder:text-slate-700"
+                />
+                <button 
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+
+              <div className="space-y-2 px-1">
+                <div className="flex justify-between items-center">
+                  <div className="flex gap-1.5 flex-1 max-w-[200px]">
+                    {[1, 2, 3, 4].map((step) => (
+                      <div 
+                        key={step}
+                        className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${
+                          step <= passwordStrength ? getStrengthColor() : 'bg-white/5'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <span className={`text-[10px] font-black uppercase italic ${passwordStrength >= 3 ? 'text-emerald-400' : 'text-slate-500'}`}>
+                    {strengthLabel}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Potvrdenie hesla</label>
+              <div className="relative group">
+                <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-white transition-colors" size={18} />
+                <input 
+                  type="password"
+                  required
+                  placeholder="Zopakujte heslo"
+                  value={formData.confirmPassword}
+                  onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+                  className={`w-full bg-white/5 border-2 rounded-2xl py-4 pl-12 pr-4 text-white focus:outline-none transition-all font-bold placeholder:text-slate-700 ${
+                    formData.confirmPassword && formData.password !== formData.confirmPassword 
+                      ? 'border-red-500/30' 
+                      : 'border-white/5 focus:border-white/20'
+                  }`}
+                />
+              </div>
+            </div>
+
+            <div className="pt-6">
+              <button 
+                type="submit"
+                disabled={!emailValid || passwordStrength < 2 || formData.password !== formData.confirmPassword}
+                className={`w-full py-5 rounded-3xl font-black uppercase text-[11px] tracking-[0.4em] flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-2xl ${
+                  emailValid && passwordStrength >= 2 && formData.password === formData.confirmPassword
+                  ? 'bg-white text-black hover:bg-slate-200 shadow-white/5'
+                  : 'bg-white/5 text-slate-500 cursor-not-allowed border-2 border-white/5'
+                }`}
+              >
+                <span>Vytvoriť účet</span>
+                <ArrowRight size={16} strokeWidth={3} />
+              </button>
+            </div>
+          </form>
+
+          <footer className="mt-8 text-center">
+            <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">
+              Máte už účet? <button onClick={onToggleMode} className="text-white hover:underline transition-all">Prihlásiť sa</button>
+            </p>
+          </footer>
+        </GlassCard>
+      </div>
+    </div>
+  );
+};
+
+export default Register;
