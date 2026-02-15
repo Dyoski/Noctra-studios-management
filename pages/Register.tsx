@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Mail, Lock, User, Eye, EyeOff, Check, X, ShieldCheck, ArrowRight } from 'lucide-react';
 import GlassCard from '../components/GlassCard';

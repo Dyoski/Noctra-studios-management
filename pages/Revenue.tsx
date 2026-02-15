@@ -1,210 +1,146 @@
-
-import React, { useState, useEffect } from 'react';
-import { db } from '../lib/database';
-import { ReceivedPayment, DashboardStats, Booking } from '../types';
+import React, { useState, useMemo } from 'react';
+import { useBookingData } from '../context/BookingContext';
 import GlassCard from '../components/GlassCard';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { DollarSign, Wallet, ArrowUpRight, Plus, History } from 'lucide-react';
+import { DollarSign, ArrowUpRight, History, Search, CheckCircle2 } from 'lucide-react';
 
-const Revenue: React.FC = () => {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [payments, setPayments] = useState<ReceivedPayment[]>([]);
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [showPayModal, setShowPayModal] = useState(false);
-  const [payData, setPayData] = useState({
-    booking_id: '',
-    amount: 0,
-    received_at: new Date().toISOString().split('T')[0],
-    note: '',
-  });
+interface RevenueProps {
+  onNavigate: (page: string, params?: any) => void;
+}
 
-  useEffect(() => {
-    loadData();
-  }, []);
+const Revenue: React.FC<RevenueProps> = ({ onNavigate }) => {
+  const { payments } = useBookingData();
+  const [historySearch, setHistorySearch] = useState('');
 
-  const loadData = async () => {
-    const s = await db.getDashboardStats();
-    const p = await db.getPayments();
-    const b = await db.getBookings();
-    setStats(s);
-    setPayments(p.sort((a,b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime()));
-    setBookings(b);
-  };
+  const filteredHistory = useMemo(() => {
+    return payments
+      .sort((a,b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime())
+      .filter(p => 
+        p.client_name.toLowerCase().includes(historySearch.toLowerCase()) ||
+        p.id.includes(historySearch) ||
+        new Date(p.received_at).toLocaleDateString('sk-SK').includes(historySearch)
+      );
+  }, [payments, historySearch]);
 
-  const handlePayment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!payData.booking_id || payData.amount <= 0) return;
-    await db.createPayment(payData);
-    setShowPayModal(false);
-    loadData();
-  };
+  const stats = useMemo(() => {
+    const total = payments.reduce((s, p) => s + p.amount, 0);
+    return { total };
+  }, [payments]);
 
-  const chartData = [
-    { name: 'Týždeň 1', booked: 0, received: 0 },
-    { name: 'Týždeň 2', booked: 0, received: 0 },
-    { name: 'Týždeň 3', booked: 0, received: 0 },
-    { name: 'Týždeň 4', booked: stats?.bookedValueMonth || 0, received: stats?.receivedAmountMonth || 0 },
-  ];
+  const chartData = useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    
+    const monthPayments = payments.filter(p => {
+      const d = new Date(p.received_at);
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    });
+
+    const weeks = [
+      { name: '1. týždeň', v: 0 },
+      { name: '2. týždeň', v: 0 },
+      { name: '3. týždeň', v: 0 },
+      { name: '4. týždeň', v: 0 }
+    ];
+
+    monthPayments.forEach(p => {
+      const day = new Date(p.received_at).getDate();
+      if (day <= 7) weeks[0].v += p.amount;
+      else if (day <= 14) weeks[1].v += p.amount;
+      else if (day <= 21) weeks[2].v += p.amount;
+      else weeks[3].v += p.amount;
+    });
+
+    return weeks;
+  }, [payments]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pb-24">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight">Financie</h1>
-          <p className="text-slate-500">Sledovanie príjmov a reporty</p>
+          <h1 className="text-3xl font-black tracking-tighter text-white uppercase italic">Revenue Track</h1>
+          <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.4em]">Finančný Prehľad</p>
         </div>
-        <button 
-          onClick={() => setShowPayModal(true)}
-          className="bg-white hover:bg-gray-200 text-black font-bold py-2 px-6 rounded-xl flex items-center gap-2 transition-all shadow-lg"
-        >
-          <Plus size={18} /> Zaznamenať platbu
-        </button>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
-          <GlassCard title="Mesačná výkonnosť">
-            <div className="h-[300px] w-full mt-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+        <div className="lg:col-span-1">
+           <GlassCard className="p-10 flex flex-col items-center text-center border-white/10 group h-full justify-center">
+              <div className="p-6 bg-white text-black rounded-3xl mb-8 group-hover:rotate-12 transition-transform">
+                <DollarSign size={32} strokeWidth={3} />
+              </div>
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] mb-2">Celkový príjem</p>
+              <h2 className="text-6xl font-black text-white tracking-tighter">€{stats.total}</h2>
+           </GlassCard>
+        </div>
+
+        <div className="lg:col-span-2">
+          <GlassCard className="p-10 border-white/10 h-full">
+            <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.4em] mb-8 flex items-center gap-4">
+               <History size={16} /> MESAČNÝ TREND ({new Date().toLocaleString('sk-SK', { month: 'long' })})
+            </h3>
+            <div className="h-[250px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData}>
+                <AreaChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                   <defs>
-                    <linearGradient id="colorBooked" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#666666" stopOpacity={0.2}/>
-                      <stop offset="95%" stopColor="#666666" stopOpacity={0}/>
-                    </linearGradient>
-                    <linearGradient id="colorReceived" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient id="colorV" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#ffffff" stopOpacity={0.2}/>
                       <stop offset="95%" stopColor="#ffffff" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                  <XAxis dataKey="name" stroke="#444444" fontSize={10} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#444444" fontSize={10} tickLine={false} axisLine={false} />
+                  <XAxis dataKey="name" stroke="#444444" fontSize={9} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#444444" fontSize={9} tickLine={false} axisLine={false} />
                   <Tooltip 
+                    formatter={(value: number) => [Math.round(value), "Suma (€)"]}
                     contentStyle={{ backgroundColor: '#000000', border: '1px solid #ffffff15', borderRadius: '12px', fontSize: '10px' }}
-                    itemStyle={{ color: '#ffffff' }}
+                    itemStyle={{ color: '#ffffff', fontWeight: 'bold' }}
                   />
-                  <Area type="monotone" dataKey="booked" stroke="#666666" fillOpacity={1} fill="url(#colorBooked)" name="Rezervované" />
-                  <Area type="monotone" dataKey="received" stroke="#ffffff" fillOpacity={1} fill="url(#colorReceived)" name="Prijaté" />
+                  <Area type="monotone" dataKey="v" stroke="#ffffff" fillOpacity={1} fill="url(#colorV)" name="Príjem" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
-            <div className="flex gap-6 mt-4 justify-center">
-              <div className="flex items-center gap-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-                <div className="w-2 h-2 rounded-full bg-gray-500" /> Rezervované
-              </div>
-              <div className="flex items-center gap-2 text-[10px] font-bold text-white uppercase tracking-widest">
-                <div className="w-2 h-2 rounded-full bg-white" /> Prijaté
-              </div>
-            </div>
-          </GlassCard>
-
-          <GlassCard title="Nedávne transakcie">
-            <div className="space-y-4">
-              {payments.length === 0 ? (
-                <p className="text-center py-10 text-slate-700 italic">Žiadna história transakcií.</p>
-              ) : (
-                payments.map(p => {
-                  const booking = bookings.find(b => b.id === p.booking_id);
-                  return (
-                    <div key={p.id} className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5">
-                      <div className="flex items-center gap-4">
-                        <div className="p-2 rounded-full bg-white/5 text-white">
-                          <ArrowUpRight size={18} />
-                        </div>
-                        <div>
-                          <h4 className="font-bold text-white text-sm">{booking?.client_name || 'Manuálny záznam'}</h4>
-                          <p className="text-[10px] text-slate-600 uppercase font-bold tracking-widest">
-                            {new Date(p.received_at).toLocaleDateString('sk-SK')}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-white font-extrabold text-lg">+€{p.amount}</div>
-                        <div className="text-[10px] text-slate-700 italic">{p.note}</div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </GlassCard>
-        </div>
-
-        <div className="space-y-8">
-          <GlassCard className="bg-white/5 border-white/20">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-white uppercase tracking-widest">Čakajúce platby</span>
-              <DollarSign size={16} className="text-white" />
-            </div>
-            <h2 className="text-4xl font-extrabold text-white">
-              €{(stats?.bookedValueMonth || 0) - (stats?.receivedAmountMonth || 0)}
-            </h2>
-            <p className="text-[10px] text-slate-600 mt-2 font-bold uppercase tracking-widest">Zostávajúci zostatok</p>
           </GlassCard>
         </div>
       </div>
 
-      {showPayModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <GlassCard className="w-full max-w-md border-white/20">
-            <h3 className="text-2xl font-extrabold text-white mb-6 tracking-tight">Zaznamenať platbu</h3>
-            <form onSubmit={handlePayment} className="space-y-4">
-              <label className="block">
-                <span className="text-xs font-bold text-slate-500 uppercase block mb-2 tracking-widest">Vybrať rezerváciu</span>
-                <select 
-                  required
-                  value={payData.booking_id}
-                  onChange={e => setPayData({...payData, booking_id: e.target.value})}
-                  className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none"
-                >
-                  <option value="">Vyberte klienta...</option>
-                  {bookings.map(b => (
-                    <option key={b.id} value={b.id}>{b.client_name}</option>
-                  ))}
-                </select>
-              </label>
-              <div className="grid grid-cols-2 gap-4">
-                <label className="block">
-                  <span className="text-xs font-bold text-slate-500 uppercase block mb-2 tracking-widest">Suma (€)</span>
-                  <input 
-                    type="number"
-                    required
-                    value={payData.amount}
-                    onChange={e => setPayData({...payData, amount: parseFloat(e.target.value)})}
-                    className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-white/30"
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-xs font-bold text-slate-500 uppercase block mb-2 tracking-widest">Dátum</span>
-                  <input 
-                    type="date"
-                    required
-                    value={payData.received_at}
-                    onChange={e => setPayData({...payData, received_at: e.target.value})}
-                    className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-white/30"
-                  />
-                </label>
-              </div>
-              <div className="flex gap-4 pt-4">
-                <button 
-                  type="button"
-                  onClick={() => setShowPayModal(false)}
-                  className="flex-1 py-3 text-slate-500 font-bold hover:text-white transition-all uppercase text-xs tracking-widest"
-                >
-                  Zrušiť
-                </button>
-                <button 
-                  type="submit"
-                  className="flex-1 bg-white hover:bg-gray-200 text-black font-extrabold py-3 rounded-xl transition-all uppercase text-xs tracking-widest"
-                >
-                  Uložiť
-                </button>
-              </div>
-            </form>
-          </GlassCard>
+      <section className="space-y-6">
+        <div className="flex items-center justify-between">
+           <h2 className="text-4xl font-black text-white uppercase italic tracking-tighter">HISTÓRIA TRANSAKCIÍ</h2>
+           <div className="relative group w-full max-w-sm">
+              <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-white transition-colors" size={20} />
+              <input value={historySearch} onChange={e => setHistorySearch(e.target.value)} className="w-full bg-white/5 border-2 border-white/5 rounded-3xl py-3 pl-16 pr-6 text-white focus:outline-none focus:border-white/20 transition-all font-black text-xs uppercase tracking-widest placeholder:text-slate-700" placeholder="Hľadať meno alebo dátum..." />
+           </div>
         </div>
-      )}
+
+        <GlassCard className="p-0 border-white/10 overflow-hidden rounded-[3rem]">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="bg-white/5 text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] border-b border-white/5">
+                  <th className="px-10 py-6">DÁTUM</th>
+                  <th className="px-10 py-6">KLIENT</th>
+                  <th className="px-10 py-6">SUMA</th>
+                  <th className="px-10 py-6">STATUS</th>
+                  <th className="px-10 py-6 text-right">AKCIA</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {filteredHistory.map(p => (
+                  <tr key={p.id} onClick={() => onNavigate('clients', { clientId: p.booking_id })} className="group hover:bg-white/5 transition-all cursor-pointer">
+                    <td className="px-10 py-8"><p className="text-white font-black text-sm tracking-widest">{new Date(p.received_at).toLocaleDateString('sk-SK')}</p></td>
+                    <td className="px-10 py-8"><p className="text-xl font-black text-white tracking-tight group-hover:translate-x-1 transition-transform">{p.client_name}</p></td>
+                    <td className="px-10 py-8"><p className="text-2xl font-black text-white tracking-tighter">€{Math.round(p.amount)}</p></td>
+                    <td className="px-10 py-8"><div className="flex items-center gap-2 text-[10px] font-black text-emerald-500 uppercase tracking-widest"><CheckCircle2 size={14} /> ZÚČTOVANÉ</div></td>
+                    <td className="px-10 py-8 text-right"><div className="p-3 bg-white/5 rounded-xl text-slate-500 group-hover:text-white transition-all inline-block"><ArrowUpRight size={20} /></div></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </GlassCard>
+      </section>
     </div>
   );
 };

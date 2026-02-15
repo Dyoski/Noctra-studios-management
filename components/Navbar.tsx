@@ -1,6 +1,5 @@
-
 import React, { useEffect, useState } from 'react';
-import { LayoutDashboard, CheckSquare, Calendar, BarChart3, LogOut } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Calendar, BarChart3, Database, LogOut, Timer } from 'lucide-react';
 
 interface NavbarProps {
   activePage: string;
@@ -12,7 +11,7 @@ const Navbar: React.FC<NavbarProps> = ({ activePage, onNavChange, onLogout }) =>
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
+    const handleScroll = () => setScrolled(window.scrollY > 10);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
@@ -21,14 +20,15 @@ const Navbar: React.FC<NavbarProps> = ({ activePage, onNavChange, onLogout }) =>
     { id: 'dashboard', label: 'Prehľad', icon: LayoutDashboard },
     { id: 'tasks', label: 'Úlohy', icon: CheckSquare },
     { id: 'calendar', label: 'Rezervácie', icon: Calendar },
+    { id: 'timer', label: 'Časovač', icon: Timer },
     { id: 'revenue', label: 'Príjmy', icon: BarChart3 },
+    { id: 'clients', label: 'Databáza', icon: Database },
   ];
 
   return (
     <nav className={`sticky top-0 z-50 transition-all duration-500 pt-8 pb-6 ${scrolled ? 'navbar-glass' : 'bg-transparent'}`}>
-      <div className="max-w-7xl mx-auto px-4">
+      <div className="max-w-7xl mx-auto px-4 w-full">
         <div className="flex flex-col items-center space-y-6">
-          {/* Logo */}
           <div 
             className="flex-shrink-0 flex items-center cursor-pointer group" 
             onClick={() => onNavChange('dashboard')}
@@ -38,7 +38,6 @@ const Navbar: React.FC<NavbarProps> = ({ activePage, onNavChange, onLogout }) =>
             </span>
           </div>
           
-          {/* Menu */}
           <div className="flex items-center space-x-2 bg-white/5 p-1 rounded-2xl border border-white/5 backdrop-blur-xl">
             {navItems.map((item) => (
               <button
