@@ -1,13 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import GlassCard from '../components/GlassCard';
+import { useAuth } from '../context/AuthContext';
 
-interface LoginProps {
-  onLogin: () => void;
-  onToggleMode: () => void;
-}
-
-const Login: React.FC<LoginProps> = ({ onLogin, onToggleMode }) => {
+const Login: React.FC = () => {
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -16,6 +13,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onToggleMode }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [emailValid, setEmailValid] = useState<boolean | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const validateEmail = (email: string) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -30,15 +28,18 @@ const Login: React.FC<LoginProps> = ({ onLogin, onToggleMode }) => {
     }
   }, [formData.email]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+
     if (emailValid && formData.password.length >= 6) {
       setIsSubmitting(true);
-      // Simulácia autentifikácie
-      setTimeout(() => {
+      const success = await login(formData.email, formData.password);
+      
+      if (!success) {
+        setError("Prístup zamietnutý. Tento systém je vyhradený pre interné účely Noctra Studios.");
         setIsSubmitting(false);
-        onLogin();
-      }, 1000);
+      }
     }
   };
 
@@ -53,6 +54,12 @@ const Login: React.FC<LoginProps> = ({ onLogin, onToggleMode }) => {
         <GlassCard className="p-10 border-white/10 shadow-[0_0_80px_rgba(255,255,255,0.02)] rounded-[3rem]">
           <form onSubmit={handleSubmit} className="space-y-6">
             
+            {error && (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                <p className="text-red-500 text-[10px] font-black uppercase tracking-widest text-center">{error}</p>
+              </div>
+            )}
+
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email</label>
               <div className="relative group">
@@ -60,7 +67,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onToggleMode }) => {
                 <input 
                   type="email"
                   required
-                  placeholder="meno@noctra.sk"
+                  placeholder="noctra@internal.sk"
                   value={formData.email}
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
                   className={`w-full bg-white/5 border-2 rounded-2xl py-4 pl-12 pr-4 text-white focus:outline-none transition-all font-bold placeholder:text-slate-700 ${
@@ -109,8 +116,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, onToggleMode }) => {
           </form>
 
           <footer className="mt-8 text-center">
-            <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">
-              Nemáte prístup? <button onClick={onToggleMode} className="text-white hover:underline transition-all">Požiadať o registráciu</button>
+            <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest leading-loose">
+              Tento systém je vyhradený pre interné účely.<br/>V prípade straty prístupu kontaktujte IT správcu.
             </p>
           </footer>
         </GlassCard>

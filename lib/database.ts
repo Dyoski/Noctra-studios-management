@@ -1,5 +1,5 @@
 
-import { Task, Booking, ReceivedPayment, DashboardStats, Client } from '../types';
+import { Task, Booking, ReceivedPayment, DashboardStats, Client, User } from '../types';
 import { PRICING_TIERS } from '../constants';
 
 const STORAGE_KEYS = {
@@ -7,6 +7,7 @@ const STORAGE_KEYS = {
   BOOKINGS: 'noctra_bookings',
   PAYMENTS: 'noctra_payments',
   CLIENTS: 'noctra_clients',
+  USERS: 'noctra_users'
 };
 
 class DatabaseService {
@@ -19,6 +20,24 @@ class DatabaseService {
     localStorage.setItem(key, JSON.stringify(data));
   }
 
+  // Auth Methods
+  async getUsers(): Promise<User[]> {
+    return this.getStorage<User>(STORAGE_KEYS.USERS);
+  }
+
+  async createUser(userData: Omit<User, 'id' | 'created_at' | 'password_hash'>, passwordRaw: string): Promise<User> {
+    const users = await this.getUsers();
+    const newUser: User = {
+      ...userData,
+      id: crypto.randomUUID(),
+      password_hash: btoa(passwordRaw), // Jednoduché šifrovanie
+      created_at: new Date().toISOString()
+    };
+    this.setStorage(STORAGE_KEYS.USERS, [...users, newUser]);
+    return newUser;
+  }
+
+  // ... (zvyšok pôvodného kódu DatabaseService zostáva nezmenený)
   async cleanUpOldPaidBookings(): Promise<void> {
     const bookings = this.getStorage<Booking>(STORAGE_KEYS.BOOKINGS);
     const now = new Date();

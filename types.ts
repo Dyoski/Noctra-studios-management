@@ -1,15 +1,24 @@
+
 export enum Priority {
   LOW = 'low',
   MEDIUM = 'medium',
   HIGH = 'high'
 }
 
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  password_hash: string;
+  created_at: string;
+}
+
 export interface Task {
   id: string;
   title: string;
   description: string;
-  assigned_to?: string; // Nové voliteľné pole
-  task_time: string | null; // HH:mm
+  assigned_to?: string;
+  task_time: string | null;
   reminder_active: boolean;
   reminder_offset_minutes: number | null;
   priority: Priority;
@@ -42,17 +51,17 @@ export interface Booking {
   track_count: number;
   calculated_price: number;
   extra_hours: number;
-  early_arrival: string; // HH:mm
+  early_arrival: string;
   is_first_timer: boolean;
   notes: string;
-  is_finalized: boolean; // Pre uzamknutie platby
+  is_finalized: boolean;
   created_at: string;
 }
 
 export interface ReceivedPayment {
   id: string;
   booking_id: string;
-  client_name: string; // Povinné meno klienta pre identifikáciu
+  client_name: string;
   amount: number;
   extra_hours_count: number;
   received_at: string;

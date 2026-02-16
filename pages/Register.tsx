@@ -1,12 +1,15 @@
+
 import React, { useState, useEffect } from 'react';
 import { Mail, Lock, User, Eye, EyeOff, Check, X, ShieldCheck, ArrowRight } from 'lucide-react';
 import GlassCard from '../components/GlassCard';
+import { useAuth } from '../context/AuthContext';
 
 interface RegisterProps {
   onToggleMode: () => void;
 }
 
 const Register: React.FC<RegisterProps> = ({ onToggleMode }) => {
+  const { register } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -18,6 +21,8 @@ const Register: React.FC<RegisterProps> = ({ onToggleMode }) => {
   const [emailValid, setEmailValid] = useState<boolean | null>(null);
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [strengthLabel, setStrengthLabel] = useState('Žiadne');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const validateEmail = (email: string) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -54,11 +59,18 @@ const Register: React.FC<RegisterProps> = ({ onToggleMode }) => {
     checkPasswordStrength(formData.password);
   }, [formData.password]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+
     if (emailValid && passwordStrength >= 2 && formData.password === formData.confirmPassword) {
-      alert("Účet bol úspešne vytvorený (simulácia). Teraz sa môžete prihlásiť.");
-      onToggleMode();
+      setIsSubmitting(true);
+      const success = await register(formData.name, formData.email, formData.password);
+      
+      if (!success) {
+        setError("Tento email sa už používa.");
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -82,6 +94,13 @@ const Register: React.FC<RegisterProps> = ({ onToggleMode }) => {
 
         <GlassCard className="p-10 border-white/10 shadow-[0_0_80px_rgba(255,255,255,0.02)] rounded-[3rem]">
           <form onSubmit={handleSubmit} className="space-y-6">
+            
+            {error && (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                <p className="text-red-500 text-[10px] font-black uppercase tracking-widest text-center">{error}</p>
+              </div>
+            )}
+
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Celé meno</label>
               <div className="relative group">
@@ -149,7 +168,7 @@ const Register: React.FC<RegisterProps> = ({ onToggleMode }) => {
                       <div 
                         key={step}
                         className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${
-                          step <= passwordStrength ? getStrengthColor() : 'bg-white/5'
+                          step <= passwordStrength ? getStrengthColor() : 'bg-white/10'
                         }`}
                       />
                     ))}
@@ -183,15 +202,15 @@ const Register: React.FC<RegisterProps> = ({ onToggleMode }) => {
             <div className="pt-6">
               <button 
                 type="submit"
-                disabled={!emailValid || passwordStrength < 2 || formData.password !== formData.confirmPassword}
+                disabled={!emailValid || passwordStrength < 2 || formData.password !== formData.confirmPassword || isSubmitting}
                 className={`w-full py-5 rounded-3xl font-black uppercase text-[11px] tracking-[0.4em] flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-2xl ${
-                  emailValid && passwordStrength >= 2 && formData.password === formData.confirmPassword
+                  emailValid && passwordStrength >= 2 && formData.password === formData.confirmPassword && !isSubmitting
                   ? 'bg-white text-black hover:bg-slate-200 shadow-white/5'
                   : 'bg-white/5 text-slate-500 cursor-not-allowed border-2 border-white/5'
                 }`}
               >
-                <span>Vytvoriť účet</span>
-                <ArrowRight size={16} strokeWidth={3} />
+                <span>{isSubmitting ? 'Vytváram...' : 'Vytvoriť účet'}</span>
+                {!isSubmitting && <ArrowRight size={16} strokeWidth={3} />}
               </button>
             </div>
           </form>

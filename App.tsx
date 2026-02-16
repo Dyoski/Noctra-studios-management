@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Navbar from './components/Navbar';
 import Dashboard from './pages/Dashboard';
 import Tasks from './pages/Tasks';
@@ -7,8 +7,8 @@ import Revenue from './pages/Revenue';
 import Clients from './pages/Clients';
 import TimerPage from './pages/Timer';
 import Login from './pages/Login';
-import Register from './pages/Register';
 import { BookingProvider, useBookingData } from './context/BookingContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { Timer as TimerIcon } from 'lucide-react';
 
 enum Page {
@@ -20,9 +20,6 @@ enum Page {
   Timer = 'timer'
 }
 
-type AuthMode = 'login' | 'register';
-
-// Samostatný komponent pre mini timer aby mal prístup k hookom
 const GlobalTimerOverlay: React.FC<{ activePage: string }> = ({ activePage }) => {
   const { timerSeconds, isTimerRunning } = useBookingData();
   
@@ -51,40 +48,19 @@ const GlobalTimerOverlay: React.FC<{ activePage: string }> = ({ activePage }) =>
 };
 
 const AppContent: React.FC = () => {
+  const { isAuthenticated, logout, loading } = useAuth();
   const [activePage, setActivePage] = useState<Page>(Page.Dashboard);
   const [activeParams, setActiveParams] = useState<any>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [authMode, setAuthMode] = useState<AuthMode>('login');
-
-  useEffect(() => {
-    const loggedIn = localStorage.getItem('noctra_auth');
-    if (loggedIn === 'true') {
-      setIsAuthenticated(true);
-    }
-  }, []);
-
-  const handleLogin = () => {
-    localStorage.setItem('noctra_auth', 'true');
-    setIsAuthenticated(true);
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('noctra_auth');
-    setIsAuthenticated(false);
-    setActivePage(Page.Dashboard);
-  };
 
   const navigateTo = (page: string, params: any = null) => {
     setActivePage(page as Page);
     setActiveParams(params);
   };
 
+  if (loading) return null;
+
   if (!isAuthenticated) {
-    return authMode === 'login' ? (
-      <Login onLogin={handleLogin} onToggleMode={() => setAuthMode('register')} />
-    ) : (
-      <Register onToggleMode={() => setAuthMode('login')} />
-    );
+    return <Login />;
   }
 
   const renderPage = () => {
@@ -105,7 +81,7 @@ const AppContent: React.FC = () => {
       <Navbar 
         activePage={activePage} 
         onNavChange={(p) => navigateTo(p)} 
-        onLogout={handleLogout} 
+        onLogout={logout} 
       />
       <main className="max-w-7xl mx-auto px-4 py-8 md:px-8">
         {renderPage()}
@@ -115,9 +91,11 @@ const AppContent: React.FC = () => {
 };
 
 const App: React.FC = () => (
-  <BookingProvider>
-    <AppContent />
-  </BookingProvider>
+  <AuthProvider>
+    <BookingProvider>
+      <AppContent />
+    </BookingProvider>
+  </AuthProvider>
 );
 
 export default App;
