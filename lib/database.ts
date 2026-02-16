@@ -105,6 +105,10 @@ class DatabaseService {
     this.setStorage(STORAGE_KEYS.TASKS, tasks.filter(t => t.id !== id));
   }
 
+  async deleteAllTasks(): Promise<void> {
+    this.setStorage(STORAGE_KEYS.TASKS, []);
+  }
+
   async getBookings(): Promise<Booking[]> {
     await this.cleanUpOldPaidBookings();
     return this.getStorage<Booking>(STORAGE_KEYS.BOOKINGS);

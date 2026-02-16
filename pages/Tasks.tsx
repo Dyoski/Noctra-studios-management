@@ -1,12 +1,15 @@
+
 import React, { useState } from 'react';
 import { useBookingData } from '../context/BookingContext';
 import { Priority, Task } from '../types';
 import GlassCard from '../components/GlassCard';
-import { Plus, CheckCircle, Circle, Trash2, Clock, Bell, AlignLeft, User } from 'lucide-react';
+// Added ListTodo to the imports from lucide-react
+import { Plus, CheckCircle, Circle, Trash2, Clock, Bell, AlignLeft, User, AlertTriangle, X as CloseIcon, ListTodo } from 'lucide-react';
 
 const Tasks: React.FC = () => {
-  const { tasks, loading, addTask, toggleTask, deleteTask } = useBookingData();
+  const { tasks, loading, addTask, toggleTask, deleteTask, deleteAllTasks } = useBookingData();
   const [showAdd, setShowAdd] = useState(false);
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
   const [timeError, setTimeError] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -60,6 +63,11 @@ const Tasks: React.FC = () => {
     setShowAdd(false);
   };
 
+  const handleConfirmDeleteAll = async () => {
+    await deleteAllTasks();
+    setShowDeleteAllModal(false);
+  };
+
   const priorityLabels: Record<Priority, string> = {
     [Priority.LOW]: 'Nízka',
     [Priority.MEDIUM]: 'Stredná',
@@ -75,12 +83,23 @@ const Tasks: React.FC = () => {
           <h1 className="text-3xl font-black tracking-tighter text-white uppercase">Úlohy</h1>
           <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Studio Workflow</p>
         </div>
-        <button 
-          onClick={() => setShowAdd(!showAdd)}
-          className="bg-white text-black font-black py-4 px-8 rounded-2xl flex items-center gap-2 hover:bg-gray-200 transition-all active:scale-95 shadow-xl text-xs uppercase tracking-widest"
-        >
-          <Plus size={18} /> Nová úloha
-        </button>
+        <div className="flex items-center gap-4">
+          {tasks.length > 0 && (
+            <button 
+              onClick={() => setShowDeleteAllModal(true)}
+              className="bg-red-500/10 border border-red-500/20 text-red-500 font-black py-4 px-6 rounded-2xl flex items-center gap-2 hover:bg-red-500 hover:text-white transition-all active:scale-95 shadow-xl text-[10px] uppercase tracking-widest"
+              title="Vymazať všetko"
+            >
+              <Trash2 size={16} /> VYMAZAŤ VŠETKO
+            </button>
+          )}
+          <button 
+            onClick={() => setShowAdd(!showAdd)}
+            className="bg-white text-black font-black py-4 px-8 rounded-2xl flex items-center gap-2 hover:bg-gray-200 transition-all active:scale-95 shadow-xl text-xs uppercase tracking-widest"
+          >
+            <Plus size={18} /> Nová úloha
+          </button>
+        </div>
       </header>
 
       {showAdd && (
@@ -171,64 +190,106 @@ const Tasks: React.FC = () => {
       )}
 
       <div className="space-y-4">
-        {tasks.map(task => (
-          <div 
-            key={task.id} 
-            className={`glass p-6 rounded-[2.5rem] border-2 flex flex-col md:flex-row md:items-center gap-6 group transition-all duration-300 ${
-              task.completed ? 'opacity-30 grayscale border-white/5' : `border-white/10`
-            }`}
-          >
-            <button onClick={() => toggleTask(task)} className="shrink-0">
-              {task.completed ? <CheckCircle size={32} className="text-white" /> : <Circle size={32} className="text-slate-600 group-hover:text-white transition-colors" />}
-            </button>
-            
-            <div className="flex-1 min-w-0 space-y-1">
-              <div className="flex items-center gap-3">
-                <h4 className={`font-black text-xl text-white truncate tracking-tighter ${task.completed ? 'line-through opacity-50' : ''}`}>
-                  {task.title}
-                </h4>
-                {task.task_time && (
-                  <span className="text-[10px] font-black bg-white/10 px-2 py-1 rounded-md text-slate-300 flex items-center gap-1">
-                    <Clock size={12} /> {task.task_time}
-                  </span>
+        {tasks.length === 0 ? (
+          <div className="text-center py-20 glass rounded-[3rem] border-dashed border-2 border-white/5">
+            <ListTodo size={48} className="text-slate-800 mx-auto mb-4" />
+            <p className="text-slate-500 font-black uppercase tracking-widest text-[10px]">Žiadne naplánované úlohy</p>
+          </div>
+        ) : (
+          tasks.map(task => (
+            <div 
+              key={task.id} 
+              className={`glass p-6 rounded-[2.5rem] border-2 flex flex-col md:flex-row md:items-center gap-6 group transition-all duration-300 ${
+                task.completed ? 'opacity-30 grayscale border-white/5' : `border-white/10`
+              }`}
+            >
+              <button onClick={() => toggleTask(task)} className="shrink-0">
+                {task.completed ? <CheckCircle size={32} className="text-white" /> : <Circle size={32} className="text-slate-600 group-hover:text-white transition-colors" />}
+              </button>
+              
+              <div className="flex-1 min-w-0 space-y-1">
+                <div className="flex items-center gap-3">
+                  <h4 className={`font-black text-xl text-white truncate tracking-tighter ${task.completed ? 'line-through opacity-50' : ''}`}>
+                    {task.title}
+                  </h4>
+                  {task.task_time && (
+                    <span className="text-[10px] font-black bg-white/10 px-2 py-1 rounded-md text-slate-300 flex items-center gap-1">
+                      <Clock size={12} /> {task.task_time}
+                    </span>
+                  )}
+                </div>
+                
+                {task.assigned_to && (
+                  <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    <User size={12} className="text-slate-500" />
+                    <span>{task.assigned_to}</span>
+                  </div>
+                )}
+
+                {task.description && (
+                  <p className="text-xs text-slate-400 font-medium line-clamp-2 leading-relaxed flex items-center gap-2 pt-1">
+                    <AlignLeft size={12} /> {task.description}
+                  </p>
                 )}
               </div>
-              
-              {task.assigned_to && (
-                <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  <User size={12} className="text-slate-500" />
-                  <span>{task.assigned_to}</span>
+
+              <div className="flex items-center gap-6">
+                 {task.reminder_active && (
+                    <div className="flex items-center gap-2 text-emerald-400 bg-emerald-500/5 px-3 py-1.5 rounded-full border border-emerald-500/20">
+                      <Bell size={12} />
+                      <span className="text-[9px] font-black uppercase tracking-widest">{task.reminder_offset_minutes}m vopred</span>
+                    </div>
+                 )}
+                <div className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border ${
+                  task.priority === Priority.HIGH ? 'bg-red-500/10 border-red-500/20 text-red-500' : 
+                  task.priority === Priority.MEDIUM ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-500' : 
+                  'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'
+                }`}>
+                  {priorityLabels[task.priority]}
                 </div>
-              )}
-
-              {task.description && (
-                <p className="text-xs text-slate-400 font-medium line-clamp-2 leading-relaxed flex items-center gap-2 pt-1">
-                  <AlignLeft size={12} /> {task.description}
-                </p>
-              )}
-            </div>
-
-            <div className="flex items-center gap-6">
-               {task.reminder_active && (
-                  <div className="flex items-center gap-2 text-emerald-400 bg-emerald-500/5 px-3 py-1.5 rounded-full border border-emerald-500/20">
-                    <Bell size={12} />
-                    <span className="text-[9px] font-black uppercase tracking-widest">{task.reminder_offset_minutes}m vopred</span>
-                  </div>
-               )}
-              <div className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border ${
-                task.priority === Priority.HIGH ? 'bg-red-500/10 border-red-500/20 text-red-500' : 
-                task.priority === Priority.MEDIUM ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-500' : 
-                'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'
-              }`}>
-                {priorityLabels[task.priority]}
+                <button onClick={() => deleteTask(task.id)} className="p-3 text-slate-600 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100">
+                  <Trash2 size={20} />
+                </button>
               </div>
-              <button onClick={() => deleteTask(task.id)} className="p-3 text-slate-600 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100">
-                <Trash2 size={20} />
-              </button>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
+
+      {/* Potvrdzovacie modálne okno hromadného vymazania */}
+      {showDeleteAllModal && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
+           <GlassCard className="max-w-md w-full p-10 border-white/20 text-center space-y-8 rounded-[2.5rem] shadow-2xl">
+              <div className="flex justify-center">
+                 <div className="p-5 bg-red-500/10 text-red-500 rounded-full">
+                    <AlertTriangle size={48} />
+                 </div>
+              </div>
+              
+              <div className="space-y-3">
+                 <h3 className="text-2xl font-black text-white uppercase tracking-tight">Hromadné vymazanie</h3>
+                 <p className="text-slate-400 text-sm font-medium leading-relaxed">
+                    Naozaj chcete vymazať všetky úlohy? Táto akcia je nevratná a odstráni všetky naplánované pripomienky.
+                 </p>
+              </div>
+
+              <div className="flex gap-4">
+                 <button 
+                  onClick={() => setShowDeleteAllModal(false)}
+                  className="flex-1 py-4 rounded-2xl bg-white/5 border border-white/10 text-white font-black uppercase text-[10px] tracking-widest hover:bg-white/10 transition-all"
+                 >
+                    ZRUŠIŤ
+                 </button>
+                 <button 
+                  onClick={handleConfirmDeleteAll}
+                  className="flex-1 py-4 rounded-2xl bg-red-600 text-white font-black uppercase text-[10px] tracking-widest hover:bg-red-500 transition-all shadow-xl shadow-red-600/20"
+                 >
+                    VYMAZAŤ VŠETKO
+                 </button>
+              </div>
+           </GlassCard>
+        </div>
+      )}
     </div>
   );
 };

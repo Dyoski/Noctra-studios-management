@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { db } from '../lib/database';
 import { Booking, ReceivedPayment, DashboardStats, Task } from '../types';
@@ -18,6 +19,7 @@ interface BookingContextType {
   addTask: (task: Omit<Task, 'id' | 'created_at' | 'completed'>) => Promise<void>;
   toggleTask: (task: Task) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
+  deleteAllTasks: () => Promise<void>;
   // Timer State
   timerSeconds: number;
   isTimerRunning: boolean;
@@ -141,6 +143,11 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     await refreshData();
   };
 
+  const deleteAllTasks = async () => {
+    await db.deleteAllTasks();
+    await refreshData();
+  };
+
   return (
     <BookingContext.Provider value={{
       bookings,
@@ -156,6 +163,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       addTask,
       toggleTask,
       deleteTask,
+      deleteAllTasks,
       timerSeconds,
       isTimerRunning,
       startTimer,
